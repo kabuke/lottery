@@ -1,0 +1,58 @@
+<h2>抽獎介面</h2>
+
+<div id="draw-controls">
+    <label for="prize-select">選擇獎項:</label>
+    <select id="prize-select" name="prizeName">
+        <option value="">-- 請選擇 --</option>
+        {{ range .Prizes }}
+            {{ if gt .Quantity 0 }}
+                <option value="{{ .Name }}">{{ .Name }} (剩餘: {{ .Quantity }})</option>
+            {{ end }}
+        {{ end }}
+    </select>
+    <button hx-post="/draw" hx-include="#prize-select" hx-target="#lottery-results" hx-swap="beforeend" hx-on::after-request="htmx.trigger('#prize-select', 'loadPrizes')">進行抽獎</button>
+</div>
+
+<h3>抽獎結果</h3>
+<a href="/export-results-csv" download="lottery_results.csv"><button>下載抽獎結果</button></a>
+<div id="lottery-results">
+    {{ range .LotteryResults }}
+        <p>{{ .PrizeItem }}({{ .PrizeName }})獎項的中獎人是{{ .WinnerName }}(員編{{ .WinnerID }})</p>
+    {{ end }}
+</div>
+
+<hr>
+
+<div hx-trigger="loadPrizes from:body" hx-get="/prizes/list" hx-target="#current-prizes-body"> 
+    <h3>現有獎項</h3>
+    <div id="current-prizes">
+        <table>
+            <thead>
+                <tr>
+                    <th>獎項名稱</th>
+                    <th>獎品名稱</th>
+                    <th>數量</th>
+                    <th>抽獎範圍</th>
+                </tr>
+            </thead>
+            <tbody id="current-prizes-body">
+                {{ template "prize_list_table_body.html" .Prizes }}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<h3>現有參與者</h3>
+<div id="current-participants">
+    <table>
+        <thead>
+            <tr>
+                <th>員工編號</th>
+                <th>員工姓名</th>
+            </tr>
+        </thead>
+        <tbody id="current-participants-body">
+            {{ template "participant_list_table_body.html" .Participants }}
+        </tbody>
+    </table>
+</div>
