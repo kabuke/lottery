@@ -5,12 +5,13 @@ import (
 	"encoding/csv"
 	"html/template"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	"lottery/internal/services"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/logger"
 )
 
 // HTTPHandler holds the dependencies for the HTTP handlers, like the lottery service.
@@ -35,7 +36,7 @@ func (h *HTTPHandler) renderPage(c *gin.Context, pageData gin.H, contentTmpl str
 	buf := new(bytes.Buffer)
 	err := h.templates.ExecuteTemplate(buf, contentTmpl, pageData)
 	if err != nil {
-		log.Printf("Error executing content template %s: %v", contentTmpl, err)
+		logger.Infof("Error executing content template %s: %v", contentTmpl, err)
 		c.String(http.StatusInternalServerError, "Template rendering error")
 		return
 	}
@@ -45,7 +46,7 @@ func (h *HTTPHandler) renderPage(c *gin.Context, pageData gin.H, contentTmpl str
 
 	err = h.templates.ExecuteTemplate(c.Writer, "layout.html", pageData)
 	if err != nil {
-		log.Printf("Error executing layout template: %v", err)
+		logger.Infof("Error executing layout template: %v", err)
 		c.String(http.StatusInternalServerError, "Template rendering error")
 	}
 }
@@ -101,7 +102,7 @@ func (h *HTTPHandler) AddPrize(c *gin.Context) {
 		"Prizes": h.service.Prizes,
 	}
 	if err := h.templates.ExecuteTemplate(c.Writer, "prize_list_container.html", data); err != nil {
-		log.Printf("Error executing template: %v", err)
+		logger.Infof("Error executing template: %v", err)
 		c.String(http.StatusInternalServerError, "Template error")
 	}
 }
@@ -122,12 +123,15 @@ func (h *HTTPHandler) UploadPrizesCSV(c *gin.Context) {
 			break
 		}
 		if err != nil {
+			h.service.ClearPrize()
 			c.String(http.StatusInternalServerError, "Error reading CSV: %v", err)
 			return
 		}
 
+		// logger.Infof("record: %+v", record)
+
 		if len(record) != 4 {
-			log.Printf("Skipping malformed CSV record: %v", record)
+			logger.Infof("Skipping malformed CSV record: %v", record)
 			continue // Skip malformed rows
 		}
 
@@ -135,12 +139,12 @@ func (h *HTTPHandler) UploadPrizesCSV(c *gin.Context) {
 		itemName := record[1]
 		quantity, err := strconv.Atoi(record[2])
 		if err != nil {
-			log.Printf("Skipping CSV record with invalid quantity: %v", record)
+			logger.Infof("Skipping CSV record with invalid quantity: %v", record)
 			continue // Skip rows with invalid quantity
 		}
 		drawFromAll, err := strconv.ParseBool(record[3])
 		if err != nil {
-			log.Printf("Skipping CSV record with invalid drawFromAll: %v", record)
+			logger.Infof("Skipping CSV record with invalid drawFromAll: %v", record)
 			continue // Skip rows with invalid drawFromAll
 		}
 
@@ -152,7 +156,7 @@ func (h *HTTPHandler) UploadPrizesCSV(c *gin.Context) {
 		"Prizes": h.service.Prizes,
 	}
 	if err := h.templates.ExecuteTemplate(c.Writer, "prize_list_container.html", data); err != nil {
-		log.Printf("Error executing template: %v", err)
+		logger.Infof("Error executing template: %v", err)
 		c.String(http.StatusInternalServerError, "Template error")
 	}
 }
@@ -183,7 +187,7 @@ func (h *HTTPHandler) AddParticipant(c *gin.Context) {
 		"Participants": h.service.Participants,
 	}
 	if err := h.templates.ExecuteTemplate(c.Writer, "participant_list_container.html", data); err != nil {
-		log.Printf("Error executing template: %v", err)
+		logger.Infof("Error executing template: %v", err)
 		c.String(http.StatusInternalServerError, "Template error")
 	}
 }
@@ -204,12 +208,13 @@ func (h *HTTPHandler) UploadParticipantsCSV(c *gin.Context) {
 			break
 		}
 		if err != nil {
+			h.service.ClearParticipant()
 			c.String(http.StatusInternalServerError, "Error reading CSV: %v", err)
 			return
 		}
 
 		if len(record) != 2 {
-			log.Printf("Skipping malformed participant CSV record: %v", record)
+			logger.Infof("Skipping malformed participant CSV record: %v", record)
 			continue // Skip malformed rows
 		}
 
@@ -221,7 +226,7 @@ func (h *HTTPHandler) UploadParticipantsCSV(c *gin.Context) {
 		"Participants": h.service.Participants,
 	}
 	if err := h.templates.ExecuteTemplate(c.Writer, "participant_list_container.html", data); err != nil {
-		log.Printf("Error executing template: %v", err)
+		logger.Infof("Error executing template: %v", err)
 		c.String(http.StatusInternalServerError, "Template error")
 	}
 }
@@ -251,8 +256,14 @@ func (h *HTTPHandler) PerformDraw(c *gin.Context) {
 		return
 	}
 
-	if err := h.templates.ExecuteTemplate(c.Writer, "lottery_draw_response.html", result); err != nil {
-		log.Printf("Error executing template: %v", err)
+	// Pass both the result and the updated prizes list to the template
+	data := gin.H{
+		"Result": result,
+		"Prizes": h.service.Prizes,
+	}
+
+	if err := h.templates.ExecuteTemplate(c.Writer, "lottery_draw_response.html", data); err != nil {
+		logger.Infof("Error executing template: %v", err)
 		c.String(http.StatusInternalServerError, "Template error")
 	}
 }
@@ -260,7 +271,7 @@ func (h *HTTPHandler) PerformDraw(c *gin.Context) {
 // GetPrizeListPartial returns the HTML partial for the prize list body.
 func (h *HTTPHandler) GetPrizeListPartial(c *gin.Context) {
 	if err := h.templates.ExecuteTemplate(c.Writer, "prize_list_table_body.html", h.service.Prizes); err != nil {
-		log.Printf("Error executing template: %v", err)
+		logger.Infof("Error executing template: %v", err)
 		c.String(http.StatusInternalServerError, "Template error")
 	}
 }
@@ -277,7 +288,7 @@ func (h *HTTPHandler) ExportResultsCSV(c *gin.Context) {
 
 	// Write header
 	if err := w.Write([]string{"獎項名稱", "員工編號", "員工姓名", "獎品名稱"}); err != nil {
-		log.Printf("Error writing CSV header: %v", err)
+		logger.Infof("Error writing CSV header: %v", err)
 		c.String(http.StatusInternalServerError, "Error writing CSV")
 		return
 	}
@@ -286,7 +297,7 @@ func (h *HTTPHandler) ExportResultsCSV(c *gin.Context) {
 	for _, result := range h.service.LotteryResults {
 		row := []string{result.PrizeName, result.WinnerID, result.WinnerName, result.PrizeItem}
 		if err := w.Write(row); err != nil {
-			log.Printf("Error writing CSV row: %v", err)
+			logger.Infof("Error writing CSV row: %v", err)
 			c.String(http.StatusInternalServerError, "Error writing CSV")
 			return
 		}
@@ -295,7 +306,7 @@ func (h *HTTPHandler) ExportResultsCSV(c *gin.Context) {
 	w.Flush()
 
 	if err := w.Error(); err != nil {
-		log.Printf("Error flushing CSV writer: %v", err)
+		logger.Infof("Error flushing CSV writer: %v", err)
 		c.String(http.StatusInternalServerError, "Error writing CSV")
 	}
 }

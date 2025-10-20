@@ -1,1 +1,12 @@
-<p>{{ .PrizeItem }}({{ .PrizeName }})獎項的中獎人是{{ .WinnerName }}(員編{{ .WinnerID }})</p>
+<!-- Main content for the hx-target -->
+<p>{{.Result.PrizeItem}}({{.Result.PrizeName}})獎項的中獎人是{{.Result.WinnerName}}(員編{{.Result.WinnerID}})</p>
+
+<!-- OOB (Out of Band) content to swap the dropdown -->
+<select id="prize-select" name="prizeName" hx-swap-oob="true">
+    <option value="">-- 請選擇 --</option>
+    {{ range .Prizes }}
+        {{ if gt .Quantity 0 }}
+            <option value="{{ .Name }}">{{ .Name }} (剩餘: {{ .Quantity }})</option>
+        {{ end }}
+    {{ end }}
+</select>

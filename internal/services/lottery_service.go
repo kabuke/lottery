@@ -15,9 +15,11 @@ type LotteryService struct {
 	LotteryResults []*models.LotteryResult
 }
 
+var RandSeed *rand.Rand
+
 // NewLotteryService creates and initializes a new LotteryService.
 func NewLotteryService() *LotteryService {
-	rand.Seed(time.Now().UnixNano())
+	RandSeed = rand.New(rand.NewSource(time.Now().UnixNano()))
 	return &LotteryService{
 		Prizes:         make([]*models.Prize, 0),
 		Participants:   make([]*models.Participant, 0),
@@ -31,6 +33,10 @@ func (s *LotteryService) AddPrize(name, item string, quantity int, drawFromAll b
 	s.Prizes = append(s.Prizes, &models.Prize{Name: name, Item: item, Quantity: quantity, DrawFromAll: drawFromAll})
 }
 
+func (s *LotteryService) ClearPrize() {
+	s.Prizes = []*models.Prize{}
+}
+
 // AddParticipant adds a new participant to the lottery.
 func (s *LotteryService) AddParticipant(id, name string) {
 	// Avoid adding duplicate participants
@@ -40,6 +46,10 @@ func (s *LotteryService) AddParticipant(id, name string) {
 		}
 	}
 	s.Participants = append(s.Participants, &models.Participant{ID: id, Name: name})
+}
+
+func (s *LotteryService) ClearParticipant() {
+	s.Participants = []*models.Participant{}
 }
 
 // Draw performs the lottery draw for a specific prize.
@@ -75,7 +85,7 @@ func (s *LotteryService) Draw(prizeName string) (*models.LotteryResult, error) {
 		return nil, errors.New("沒有符合資格的參與者可供抽獎")
 	}
 
-	winnerIndex := rand.Intn(len(eligibleParticipants))
+	winnerIndex := RandSeed.Intn(len(eligibleParticipants))
 	winner := eligibleParticipants[winnerIndex]
 
 	// Update state

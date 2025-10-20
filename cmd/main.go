@@ -2,12 +2,22 @@ package main
 
 import (
 	"html/template"
+	"io"
 	"log"
 
-	"github.com/gin-gonic/gin"
 	"lottery/internal/handlers"
 	"lottery/internal/services"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/logger"
 )
+
+func init() {
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	// log.SetOutput(io.Discard)
+	logger.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	logger.Init("Lottery!!", true, true, io.Discard)
+}
 
 func main() {
 	// 1. Initialize the Lottery Service
