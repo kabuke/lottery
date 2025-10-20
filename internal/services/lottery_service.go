@@ -103,19 +103,9 @@ func (s *LotteryService) Draw(tenantID, prizeName string) (*models.LotteryResult
 		return nil, errors.New("該獎項已被抽完")
 	}
 
-	var eligibleParticipants []*models.Participant
-	if targetPrize.DrawFromAll {
-		eligibleParticipants = session.Participants
-	} else {
-		for _, p := range session.Participants {
-			if !session.Winners[p.ID] {
-				eligibleParticipants = append(eligibleParticipants, p)
-			}
-		}
-	}
-
-	if len(eligibleParticipants) == 0 {
-		return nil, errors.New("沒有符合資格的參與者可供抽獎")
+	eligibleParticipants, err := s.GetEligibleParticipants(tenantID, prizeName)
+	if err != nil {
+		return nil, err
 	}
 
 	winnerIndex := rand.Intn(len(eligibleParticipants))
@@ -133,6 +123,39 @@ func (s *LotteryService) Draw(tenantID, prizeName string) (*models.LotteryResult
 	session.LotteryResults = append(session.LotteryResults, result)
 
 	return result, nil
+}
+
+// GetEligibleParticipants returns a slice of participants eligible for a specific prize draw.
+func (s *LotteryService) GetEligibleParticipants(tenantID, prizeName string) ([]*models.Participant, error) {
+	session := s.getSession(tenantID)
+
+	var targetPrize *models.Prize
+	for _, p := range session.Prizes {
+		if p.Name == prizeName {
+			targetPrize = p
+			break
+		}
+	}
+	if targetPrize == nil {
+		return nil, errors.New("指定的獎項不存在")
+	}
+
+	var eligibleParticipants []*models.Participant
+	if targetPrize.DrawFromAll {
+		eligibleParticipants = session.Participants
+	} else {
+		for _, p := range session.Participants {
+			if !session.Winners[p.ID] {
+				eligibleParticipants = append(eligibleParticipants, p)
+			}
+		}
+	}
+
+	if len(eligibleParticipants) == 0 {
+		return nil, errors.New("沒有符合資格的參與者可供抽獎")
+	}
+
+	return eligibleParticipants, nil
 }
 
 // CleanUpInactiveSessions removes sessions that have been inactive for over an hour.

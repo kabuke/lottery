@@ -90,7 +90,7 @@ func (h *HTTPHandler) RegisterTenantRoutes(router *gin.RouterGroup) {
 	router.POST("/participants", h.AddParticipant)
 	router.POST("/upload-participants-csv", h.UploadParticipantsCSV)
 	router.GET("/lottery", h.ShowLotteryPage)
-	router.POST("/draw", h.PerformDraw)
+	router.POST("/draw/animation", h.PerformDrawAnimation) // New route
 	router.GET("/prizes/list", h.GetPrizeListPartial)
 	router.GET("/export-results-csv", h.ExportResultsCSV)
 }
@@ -267,11 +267,20 @@ func (h *HTTPHandler) ShowLotteryPage(c *gin.Context) {
 		"Participants":   h.service.GetParticipants(tenantID),
 		"LotteryResults": h.service.GetLotteryResults(tenantID),
 	}
-	h.renderPage(c, data, "lottery_interface.html")
+
+	// If it's an HTMX request, only render the partial content.
+	// Otherwise, render the full page with the layout.
+	if c.GetHeader("HX-Request") == "true" {
+		if err := h.templates.ExecuteTemplate(c.Writer, "lottery_interface.html", data); err != nil {
+			log.Printf("Error executing partial template: %v", err)
+		}
+	} else {
+		h.renderPage(c, data, "lottery_interface.html")
+	}
 }
 
-// PerformDraw handles the request to draw a winner for a prize.
-func (h *HTTPHandler) PerformDraw(c *gin.Context) {
+// PerformDrawAnimation handles the request to draw a winner and show the animation.
+func (h *HTTPHandler) PerformDrawAnimation(c *gin.Context) {
 	tenantID := c.GetString(tenantIDKey)
 	prizeName := c.PostForm("prizeName")
 	if prizeName == "" {
@@ -279,19 +288,28 @@ func (h *HTTPHandler) PerformDraw(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.Draw(tenantID, prizeName)
+	// We need the list of people for the animation reel
+	eligible, err := h.service.GetEligibleParticipants(tenantID, prizeName)
 	if err != nil {
 		c.String(http.StatusOK, "<p>%s</p>", err.Error())
 		return
 	}
 
-	data := gin.H{
-		"Result": result,
-		"Prizes": h.service.GetPrizes(tenantID),
+	// Now, perform the actual draw
+	winner, err := h.service.Draw(tenantID, prizeName)
+	if err != nil {
+		c.String(http.StatusOK, "<p>%s</p>", err.Error())
+		return
 	}
 
-	if err := h.templates.ExecuteTemplate(c.Writer, "lottery_draw_response.html", data); err != nil {
-		log.Printf("Error executing template: %v", err)
+	// Render the animation template with all the data it needs
+	data := gin.H{
+		"EligibleParticipants": eligible,
+		"Winner":               winner,
+	}
+
+	if err := h.templates.ExecuteTemplate(c.Writer, "animation.html", data); err != nil {
+		log.Printf("Error executing animation template: %v", err)
 	}
 }
 

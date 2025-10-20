@@ -1,0 +1,117 @@
+<style>
+    #slot-modal {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.95); /* Darkened background */
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        z-index: 1000; opacity: 0; transition: opacity 0.3s;
+    }
+    #slot-machine {
+        width: 80%; max-width: 500px; height: 150px;
+        background: #111; border: 5px solid #555; border-radius: 10px;
+        overflow: hidden; position: relative;
+    }
+    #slot-machine::before, #slot-machine::after {
+        content: ''; position: absolute; left: 0; right: 0; height: 40px;
+        z-index: 2;
+    }
+    #slot-machine::before {
+        top: 0;
+        background: linear-gradient(to bottom, #111 0%, rgba(17,17,17,0) 100%);
+    }
+    #slot-machine::after {
+        bottom: 0;
+        background: linear-gradient(to top, #111 0%, rgba(17,17,17,0) 100%);
+    }
+    #reel {
+        position: absolute; top: 0; left: 0; right: 0;
+        text-align: center;
+    }
+    .reel-item {
+        font-size: 2.5rem; font-weight: bold; color: white;
+        height: 150px; line-height: 150px;
+    }
+    #winner-line {
+        position: absolute; top: 50%; left: 0; right: 0; margin-top: -2px;
+        height: 4px; background-color: #e44; z-index: 3;
+        box-shadow: 0 0 10px #ff7b7b;
+    }
+    #confirm-winner-btn {
+        display: none;
+        margin-top: 20px;
+        padding: 10px 30px;
+        font-size: 1.2rem;
+    }
+</style>
+
+<div id="slot-modal">
+    <div id="slot-machine">
+        <div id="winner-line"></div>
+        <div id="reel"></div>
+    </div>
+    <button id="confirm-winner-btn">確定</button>
+</div>
+
+<script>
+(function() {
+    const modal = document.getElementById('slot-modal');
+    const reel = document.getElementById('reel');
+    const confirmBtn = document.getElementById('confirm-winner-btn');
+    const animationDuration = 3000; // 3 seconds
+
+    const participants = [{{range .EligibleParticipants}}"{{.Name}}",{{end}}];
+    const winner = "{{.Winner.WinnerName}}";
+
+    // --- Sounds --- 
+    const spinSound = new Audio('/assets/SlotMachine_Wheel.mp3');
+    const winSound = new Audio('/assets/you-win-sequence-2.mp3');
+    spinSound.onerror = () => console.log("Could not load spin sound.");
+    winSound.onerror = () => console.log("Could not load win sound.");
+
+    // --- Setup Reel ---
+    const shuffled = [...participants].sort(() => 0.5 - Math.random());
+    const winnerIndex = shuffled.indexOf(winner);
+    if (winnerIndex > -1) {
+        shuffled.splice(winnerIndex, 1);
+    }
+    shuffled.push(winner);
+    const repeated = Array(10).fill(shuffled).flat();
+    reel.innerHTML = repeated.map(p => `<div class="reel-item">${p}</div>`).join('');
+
+    // --- Event Listener for confirm button ---
+    confirmBtn.addEventListener('click', () => {
+        modal.style.opacity = '0';
+        setTimeout(() => {
+            modal.remove();
+            htmx.trigger("body", "updateLotteryPage", {});
+        }, 300);
+    });
+
+    // --- Animation Logic ---
+    function startAnimation() {
+        modal.style.opacity = '1';
+        spinSound.play().catch(e => console.log("Spin sound playback failed."));
+
+        const reelItemHeight = 150;
+        const finalPosition = (repeated.length - 1) * reelItemHeight;
+
+        reel.style.transition = `transform ${animationDuration / 1000}s cubic-bezier(0.25, 1, 0.5, 1)`;
+        reel.style.transform = `translateY(-${finalPosition}px)`;
+
+        setTimeout(endAnimation, animationDuration);
+    }
+
+    function endAnimation() {
+        spinSound.pause();
+        winSound.play().catch(e => console.log("Win sound playback failed."));
+
+        const winnerElement = reel.children[repeated.length - 1];
+        winnerElement.style.color = '#ffdd00';
+        winnerElement.style.textShadow = '0 0 15px #fff';
+
+        // Show the confirm button
+        confirmBtn.style.display = 'block';
+    }
+
+    startAnimation();
+})();
+</script>

@@ -36,6 +36,9 @@ func main() {
 	// 4. Set up the Gin router
 	r := gin.Default()
 
+	// Serve static files from the web/assets directory
+	r.Static("/assets", "./web/assets")
+
 	// 5. Register public routes (before middleware)
 	httpHandler.RegisterPublicRoutes(r)
 
