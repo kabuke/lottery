@@ -1,4 +1,18 @@
 <h1>歡迎使用抽獎應用程式</h1>
+
+<div id="tenant-form">
+    <h3>設定您的名稱/公司</h3>
+    <form action="/set-tenant" method="post">
+        <label for="tenant-name">請輸入名稱：</label>
+        <input type="text" id="tenant-name" name="tenantName" required>
+        <button type="submit">設定</button>
+    </form>
+    <p><small>您的所有資料（獎項、參與者）將會與此名稱和您的 IP 位址綁定，並在一小時無活動後自動清除。</small></p>
+    <p>目前使用者: <strong>{{ .CurrentTenant }}</strong></p>
+</div>
+
+<hr>
+
 <p>請從上方導覽列選擇一個項目開始。</p>
 
 <hr>

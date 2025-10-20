@@ -4,9 +4,9 @@ import (
 	"html/template"
 	"io"
 	"log"
-
 	"lottery/internal/handlers"
 	"lottery/internal/services"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/logger"
@@ -36,13 +36,24 @@ func main() {
 	// 4. Set up the Gin router
 	r := gin.Default()
 
-	// 5. Register routes
-	httpHandler.RegisterRoutes(r)
+	// 5. Register public routes (before middleware)
+	httpHandler.RegisterPublicRoutes(r)
 
-	// Serve static files
-	r.Static("/assets", "./web/assets")
+	// 6. Group routes that require tenant identification and apply middleware
+	tenantRoutes := r.Group("/")
+	tenantRoutes.Use(httpHandler.TenantMiddleware())
+	httpHandler.RegisterTenantRoutes(tenantRoutes)
 
-	// 6. Run the server
+	// 7. Start the background janitor to clean up inactive sessions
+	go func() {
+		for {
+			time.Sleep(10 * time.Minute) // Run every 10 minutes
+			lotteryService.CleanUpInactiveSessions()
+			log.Println("Performed cleanup of inactive sessions.")
+		}
+	}()
+
+	// 8. Run the server
 	log.Println("Server starting on http://localhost:8080")
 	if err := r.Run(":8080"); err != nil {
 		log.Fatalf("Failed to run server: %v", err)

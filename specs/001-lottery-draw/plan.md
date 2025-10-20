@@ -16,6 +16,8 @@
                 ├── go.mod
                 └── go.sum
 - **任務 1.3:** HTMX CDN 網址 https://cdn.jsdelivr.net/npm/htmx.org/dist/
+- **任務 1.4:** 為每個使用者/公司提供獨立的資料空間管理一個「租戶地圖 (map)」，其鍵 (key) 由您指定的使用者名稱和 Client IP 組成，值 (value) 則是對應的LotterySession。
+               LotterySession 結構，用來存放的資料，包括：獎項、參與者、中獎結果，以及一個 LastActivity 時間戳，用來追蹤該租戶的最後活動時間。
 
 ## 2. 核心功能開發
 
