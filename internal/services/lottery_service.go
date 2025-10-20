@@ -147,3 +147,11 @@ func (s *LotteryService) CleanUpInactiveSessions() {
 		}
 	}
 }
+
+// ClearSession removes all data associated with a specific tenant.
+func (s *LotteryService) ClearSession(tenantID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.sessions, tenantID)
+	logger.Infof("Cleared session for tenant: %s", tenantID)
+}

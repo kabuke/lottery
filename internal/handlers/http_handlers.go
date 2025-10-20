@@ -53,6 +53,10 @@ func (h *HTTPHandler) TenantMiddleware() gin.HandlerFunc {
 
 // renderPage is a helper for two-step template rendering.
 func (h *HTTPHandler) renderPage(c *gin.Context, pageData gin.H, contentTmpl string) {
+	// Automatically add current tenant name to all page renders
+	currentTenant, _ := c.Cookie(tenantCookieName)
+	pageData["CurrentTenant"] = currentTenant
+
 	buf := new(bytes.Buffer)
 	err := h.templates.ExecuteTemplate(buf, contentTmpl, pageData)
 	if err != nil {
@@ -73,6 +77,7 @@ func (h *HTTPHandler) renderPage(c *gin.Context, pageData gin.H, contentTmpl str
 // RegisterPublicRoutes registers routes that do not require tenant identification.
 func (h *HTTPHandler) RegisterPublicRoutes(router *gin.Engine) {
 	router.POST("/set-tenant", h.SetTenant)
+	router.GET("/clear-tenant", h.ClearTenant) // New route
 }
 
 // RegisterTenantRoutes registers routes that require the tenant middleware.
@@ -100,10 +105,26 @@ func (h *HTTPHandler) SetTenant(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/")
 }
 
+// ClearTenant clears the user's session and cookie, then redirects to home.
+func (h *HTTPHandler) ClearTenant(c *gin.Context) {
+	// This handler is on a public route, so it needs to construct the tenantID itself
+	// before clearing the cookie.
+	tenantName, err := c.Cookie(tenantCookieName)
+	if err == nil && tenantName != "" {
+		// If the cookie exists, construct the tenantID and clear the session data.
+		tenantID := fmt.Sprintf("%s-%s", tenantName, c.ClientIP())
+		h.service.ClearSession(tenantID)
+	}
+
+	// Clear the cookie by setting its max age to -1
+	c.SetCookie(tenantCookieName, "", -1, "/", "", false, true)
+
+	c.Redirect(http.StatusFound, "/")
+}
+
 // ShowIndex handles the request for the home page.
 func (h *HTTPHandler) ShowIndex(c *gin.Context) {
-	currentTenant, _ := c.Cookie(tenantCookieName)
-	h.renderPage(c, gin.H{"title": "首頁", "CurrentTenant": currentTenant}, "index.html")
+	h.renderPage(c, gin.H{"title": "首頁"}, "index.html")
 }
 
 // ShowPrizesPage handles the request for the prize setting page.
