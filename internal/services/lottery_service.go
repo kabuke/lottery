@@ -14,7 +14,8 @@ import (
 type LotterySession struct {
 	Prizes         []*models.Prize
 	Participants   []*models.Participant
-	Winners        map[string]bool // Key: Participant.ID
+	// Winners maps a participant ID to a set of prize names they have won.
+	Winners        map[string]map[string]bool // map[participantID]map[prizeName]true
 	LotteryResults []*models.LotteryResult
 	LastActivity   time.Time
 }
@@ -42,7 +43,7 @@ func (s *LotteryService) getSession(tenantID string) *LotterySession {
 		session = &LotterySession{
 			Prizes:         make([]*models.Prize, 0),
 			Participants:   make([]*models.Participant, 0),
-			Winners:        make(map[string]bool),
+			Winners:        make(map[string]map[string]bool),
 			LotteryResults: make([]*models.LotteryResult, 0),
 		}
 		s.sessions[tenantID] = session
@@ -87,6 +88,12 @@ func (s *LotteryService) AddParticipant(tenantID, id, name string) {
 func (s *LotteryService) Draw(tenantID, prizeName string) (*models.LotteryResult, error) {
 	session := s.getSession(tenantID)
 
+	eligibleParticipants, err := s.GetEligibleParticipants(tenantID, prizeName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find the target prize (we know it exists from GetEligibleParticipants)
 	var targetPrize *models.Prize
 	for _, p := range session.Prizes {
 		if p.Name == prizeName {
@@ -95,24 +102,16 @@ func (s *LotteryService) Draw(tenantID, prizeName string) (*models.LotteryResult
 		}
 	}
 
-	if targetPrize == nil {
-		return nil, errors.New("指定的獎項不存在")
-	}
-
-	if targetPrize.Quantity <= 0 {
-		return nil, errors.New("該獎項已被抽完")
-	}
-
-	eligibleParticipants, err := s.GetEligibleParticipants(tenantID, prizeName)
-	if err != nil {
-		return nil, err
-	}
-
 	winnerIndex := rand.Intn(len(eligibleParticipants))
 	winner := eligibleParticipants[winnerIndex]
 
+	// Update state
 	targetPrize.Quantity--
-	session.Winners[winner.ID] = true
+	// Ensure the nested map exists before writing to it
+	if session.Winners[winner.ID] == nil {
+		session.Winners[winner.ID] = make(map[string]bool)
+	}
+	session.Winners[winner.ID][prizeName] = true
 
 	result := &models.LotteryResult{
 		PrizeName:  targetPrize.Name,
@@ -139,13 +138,22 @@ func (s *LotteryService) GetEligibleParticipants(tenantID, prizeName string) ([]
 	if targetPrize == nil {
 		return nil, errors.New("指定的獎項不存在")
 	}
+	if targetPrize.Quantity <= 0 {
+		return nil, errors.New("該獎項已被抽完")
+	}
 
 	var eligibleParticipants []*models.Participant
-	if targetPrize.DrawFromAll {
-		eligibleParticipants = session.Participants
-	} else {
-		for _, p := range session.Participants {
-			if !session.Winners[p.ID] {
+	for _, p := range session.Participants {
+		wins := session.Winners[p.ID]
+
+		if targetPrize.DrawFromAll {
+			// Rule: Can win this prize category only once.
+			if !wins[prizeName] { // If they have NOT won this specific prize before
+				eligibleParticipants = append(eligibleParticipants, p)
+			}
+		} else {
+			// Rule: Can only win one prize in total from the non-drawFromAll pool.
+			if len(wins) == 0 { // If their win record is empty
 				eligibleParticipants = append(eligibleParticipants, p)
 			}
 		}

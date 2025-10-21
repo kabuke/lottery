@@ -8,9 +8,11 @@
     <style>
         body { font-family: sans-serif; margin: 0; background-color: #f4f4f9; }
         .container { max-width: 960px; margin: 20px auto; padding: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        nav { background-color: #4a4a4a; padding: 1rem; }
+        nav { background-color: #4a4a4a; padding: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         nav a { color: white; text-decoration: none; margin-right: 15px; }
         nav a:hover { text-decoration: underline; }
+        .nav-user { color: white; }
+        .nav-user .restart-link { margin-left: 15px; }
         h1, h2, h3 { color: #333; }
         button { background-color: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; }
         button:hover { background-color: #0056b3; }
@@ -18,12 +20,31 @@
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
+
+        /* Responsive styles for mobile */
+        @media (max-width: 768px) {
+            nav { flex-direction: column; align-items: flex-start; }
+            .nav-user { margin-top: 10px; }
+            .nav-links a { display: block; margin-bottom: 5px; }
+        }
     </style>
 </head>
 <body>
-    {{ template "navbar.html" . }}
+    {{template "navbar.html" .}}
     <div class="container" id="content-container">
         {{.PageContent}}
     </div>
+
+    <script>
+        // Check for login error on page load and show alert.
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('error') === 'login_required') {
+                alert("請先設定您的使用者/公司名稱！");
+                // Clean the URL to avoid showing the alert on reload
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        })();
+    </script>
 </body>
 </html>

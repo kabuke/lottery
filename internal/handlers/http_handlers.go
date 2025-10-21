@@ -35,8 +35,16 @@ func NewHTTPHandler(service *services.LotteryService, templates *template.Templa
 func (h *HTTPHandler) TenantMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tenantName, err := c.Cookie(tenantCookieName)
-		if err != nil {
-			// If cookie is not set, use a default name based on IP
+
+		// If cookie is not set and user is trying to access a protected page
+		if err != nil && c.Request.URL.Path != "/" {
+			c.Redirect(http.StatusFound, "/?error=login_required")
+			c.Abort() // Stop processing the request
+			return
+		}
+
+		// If cookie is not set on home page, use a temporary ID
+		if err != nil && c.Request.URL.Path == "/" {
 			tenantName = fmt.Sprintf("user-%s", c.ClientIP())
 		}
 

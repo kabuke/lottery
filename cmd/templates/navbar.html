@@ -1,12 +1,14 @@
 <nav>
-    <a href="/">首頁</a>
-    <a href="/prizes">獎項設定</a>
-    <a href="/participants">參與者設定</a>
-    <a href="/lottery">抽獎介面</a>
-    <div style="float: right; color: white;">
+    <div class="nav-links">
+        <a href="/">首頁</a>
+        <a href="/prizes">獎項設定</a>
+        <a href="/participants">參與者設定</a>
+        <a href="/lottery">抽獎介面</a>
+    </div>
+    <div class="nav-user">
         {{ if .CurrentTenant }}
             <span>目前使用者: <strong>{{ .CurrentTenant }}</strong></span>
-            <a href="/clear-tenant" style="margin-left: 15px;">重新開始</a>
+            <a href="/clear-tenant" class="restart-link">重新開始</a>
         {{ end }}
     </div>
 </nav>
