@@ -31,3 +31,4 @@ go.work.sum
 # .idea/
 # .vscode/
 .DS_Store
+lottery_linux_amd64
