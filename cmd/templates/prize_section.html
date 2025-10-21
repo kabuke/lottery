@@ -1,0 +1,35 @@
+<h2>獎項設定</h2>
+
+<h3>從 CSV 上傳獎項</h3>
+<div id="csv-upload-form">
+    <form hx-post="/upload-prizes-csv" hx-encoding="multipart/form-data" hx-target="#prize-list-container" hx-swap="innerHTML">
+        <input type="file" name="prizeCSV" accept=".csv" required>
+        <button type="submit">上傳獎項 CSV</button>
+    </form>
+</div>
+
+<br>
+
+<h3>手動新增獎項</h3>
+<div id="manual-add-form">
+    <form hx-post="/prizes" hx-target="#prize-list-container" hx-swap="innerHTML">
+        <label for="prize-name">獎項名稱:</label>
+        <input type="text" id="prize-name" name="prizeName" required><br><br>
+        
+        <label for="item-name">獎品名稱:</label>
+        <input type="text" id="item-name" name="itemName" required><br><br>
+        
+        <label for="quantity">數量:</label>
+        <input type="number" id="quantity" name="quantity" min="1" value="1" required><br><br>
+
+        <label for="draw-from-all">從所有參與者中抽取 (包括已中獎者):</label>
+        <input type="checkbox" id="draw-from-all" name="drawFromAll" value="true"><br><br>
+        
+        <button type="submit">新增獎項</button>
+    </form>
+</div>
+
+<h3>現有獎項</h3>
+<div id="prize-list-container">
+    {{ template "prize_list_container.html" . }}
+</div>

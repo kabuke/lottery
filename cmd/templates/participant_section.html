@@ -1,0 +1,29 @@
+<h2>參與者設定</h2>
+
+<h3>從 CSV 上傳參與者</h3>
+<div id="csv-upload-form-participant">
+    <form hx-post="/upload-participants-csv" hx-encoding="multipart/form-data" hx-target="#participant-list-container" hx-swap="innerHTML">
+        <input type="file" name="participantCSV" accept=".csv" required>
+        <button type="submit">上傳參與者 CSV</button>
+    </form>
+</div>
+
+<br>
+
+<h3>手動新增參與者</h3>
+<div id="manual-add-form-participant">
+    <form hx-post="/participants" hx-target="#participant-list-container" hx-swap="innerHTML">
+        <label for="participant-id">員工編號:</label>
+        <input type="text" id="participant-id" name="participantID" required><br><br>
+        
+        <label for="participant-name">員工姓名:</label>
+        <input type="text" id="participant-name" name="participantName" required><br><br>
+        
+        <button type="submit">新增參與者</button>
+    </form>
+</div>
+
+<h3>現有參與者</h3>
+<div id="participant-list-container">
+    {{ template "participant_list_container.html" . }}
+</div>

@@ -1,8 +1,0 @@
-{{ range . }}
-    <tr>
-        <td>{{ .Name }}</td>
-        <td>{{ .Item }}</td>
-        <td>{{ .Quantity }}</td>
-        <td>{{ if .DrawFromAll }}全體{{ else }}未中獎者{{ end }}</td>
-    </tr>
-{{ end }}

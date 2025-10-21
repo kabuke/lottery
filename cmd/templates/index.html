@@ -1,0 +1,28 @@
+<h1>歡迎使用抽獎應用程式</h1>
+
+{{ if not .CurrentTenant }}
+<div id="tenant-form">
+    <h3>設定您的名稱/公司</h3>
+    <form action="/set-tenant" method="post">
+        <label for="tenant-name">請輸入名稱：</label>
+        <input type="text" id="tenant-name" name="tenantName" required>
+        <button type="submit">設定</button>
+    </form>
+    <p><small>您的所有資料（獎項、參與者）將會與此名稱和您的 IP 位址綁定，並在一小時無活動後自動清除。</small></p>
+</div>
+{{ else }}
+<div>
+    <p>歡迎回來, <strong>{{ .CurrentTenant }}</strong>! 您可以開始從上方導覽列設定獎項或參與者。</p>
+</div>
+{{ end }}
+
+<hr>
+
+<p>請從上方導覽列選擇一個項目開始。</p>
+
+<hr>
+<h3>範例檔案下載</h3>
+<ul>
+    <li><a href="/assets/example_prize.csv" download>下載獎項範例 (prizes.csv)</a></li>
+    <li><a href="/assets/example_participants.csv" download>下載參與者範例 (participants.csv)</a></li>
+</ul>
