@@ -1,4 +1,4 @@
-# [注意] 2025/10/22 後會更新  [compile_version](https://github.com/kabuke/lottery/tree/compile_version) 分支，請移步查看更新說明
+## [注意] 2025/10/22 後只更新  [compile_version](https://github.com/kabuke/lottery/tree/compile_version) 分支，請移步查看更新說明
 
 # lottery
 因應尾牙抽獎作的..快樂程式!! 
