@@ -12,8 +12,8 @@ import (
 
 // LotterySession holds the data for a single user/tenant.
 type LotterySession struct {
-	Prizes         []*models.Prize
-	Participants   []*models.Participant
+	Prizes       []*models.Prize
+	Participants []*models.Participant
 	// Winners maps a participant ID to a set of prize names they have won.
 	Winners        map[string]map[string]bool // map[participantID]map[prizeName]true
 	LotteryResults []*models.LotteryResult
@@ -148,12 +148,31 @@ func (s *LotteryService) GetEligibleParticipants(tenantID, prizeName string) ([]
 
 		if targetPrize.DrawFromAll {
 			// Rule: Can win this prize category only once.
+			// DrawFromAll prizes are independent of other prizes.
 			if !wins[prizeName] { // If they have NOT won this specific prize before
 				eligibleParticipants = append(eligibleParticipants, p)
 			}
 		} else {
-			// Rule: Can only win one prize in total from the non-drawFromAll pool.
-			if len(wins) == 0 { // If their win record is empty
+			// Rule: Can only win one REGULAR prize in total.
+			// Special prizes (DrawFromAll=true) do NOT count as a regular prize win.
+			hasWonRegularPrize := false
+			for wonPrizeName := range wins {
+				// We need to find the definition of the won prize to check if it was a regular prize
+				var wonPrize *models.Prize
+				for _, prizeDef := range session.Prizes {
+					if prizeDef.Name == wonPrizeName {
+						wonPrize = prizeDef
+						break
+					}
+				}
+				// If the prize exists and is NOT a DrawFromAll prize, then count it as a regular win.
+				if wonPrize != nil && !wonPrize.DrawFromAll {
+					hasWonRegularPrize = true
+					break
+				}
+			}
+
+			if !hasWonRegularPrize { // If they haven't won any regular prize
 				eligibleParticipants = append(eligibleParticipants, p)
 			}
 		}
@@ -172,7 +191,7 @@ func (s *LotteryService) CleanUpInactiveSessions() {
 	defer s.mu.Unlock()
 
 	for tenantID, session := range s.sessions {
-		if time.Since(session.LastActivity) > time.Hour {
+		if time.Since(session.LastActivity) > 6*time.Hour {
 			logger.Infof("sessions: %+v, tenantID: %+v", s.sessions, tenantID)
 			delete(s.sessions, tenantID)
 		}

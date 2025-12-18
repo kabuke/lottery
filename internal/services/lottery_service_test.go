@@ -113,3 +113,81 @@ func TestLotteryService_Draw_FromAllAllowsPreviousWinners(t *testing.T) {
 		t.Errorf("Expected winner to be 001, but got %s", result.WinnerID)
 	}
 }
+
+func TestLotteryService_Draw_SpecialPrizeDoesNotBlockRegularPrize(t *testing.T) {
+	const testTenantID = "test-tenant-special-then-regular"
+	service := NewLotteryService()
+
+	// Setup:
+	// Prize S (Special, DrawFromAll=true)
+	// Prize A (Regular, DrawFromAll=false)
+	service.AddPrize(testTenantID, "PrizeS", "Special Item", 1, true)
+	service.AddPrize(testTenantID, "PrizeA", "Regular Item", 1, false)
+
+	// Participant: User1
+	service.AddParticipant(testTenantID, "001", "User1")
+
+	// Step 1: Draw Prize S (Special)
+	resultS, err := service.Draw(testTenantID, "PrizeS")
+	if err != nil {
+		t.Fatalf("Failed to draw Special Prize: %v", err)
+	}
+	if resultS.WinnerID != "001" {
+		t.Fatalf("Expected User1 to win Special Prize, but got %s", resultS.WinnerID)
+	}
+
+	// Step 2: Draw Prize A (Regular)
+	// User1 should STILL be eligible because Prize S is special.
+	resultA, err := service.Draw(testTenantID, "PrizeA")
+	if err != nil {
+		t.Fatalf("Failed to draw Regular Prize: %v", err)
+	}
+	if resultA.WinnerID != "001" {
+		t.Fatalf("Expected User1 to win Regular Prize, but got %s", resultA.WinnerID)
+	}
+
+	// Verify User1 has both prizes
+	session := service.getSession(testTenantID)
+	wins := session.Winners["001"]
+	if !wins["PrizeS"] || !wins["PrizeA"] {
+		t.Errorf("Expected User1 to have both prizes, but wins map is: %v", wins)
+	}
+}
+
+func TestLotteryService_Draw_MultipleSpecialPrizes(t *testing.T) {
+	const testTenantID = "test-tenant-multi-special"
+	service := NewLotteryService()
+
+	// Setup:
+	// Prize A (Regular)
+	// Prize S (Special)
+	// Prize SS (Special)
+	service.AddPrize(testTenantID, "PrizeA", "Regular", 1, false)
+	service.AddPrize(testTenantID, "PrizeS", "Special1", 1, true)
+	service.AddPrize(testTenantID, "PrizeSS", "Special2", 1, true)
+
+	// Participant: User1
+	service.AddParticipant(testTenantID, "001", "User1")
+
+	// 1. Draw Prize S
+	service.Draw(testTenantID, "PrizeS")
+
+	// 2. Draw Prize SS (Should be eligible)
+	_, err := service.Draw(testTenantID, "PrizeSS")
+	if err != nil {
+		t.Fatalf("Failed to draw second Special Prize (SS): %v", err)
+	}
+
+	// 3. Draw Prize A (Should be eligible, as S and SS are special)
+	_, err = service.Draw(testTenantID, "PrizeA")
+	if err != nil {
+		t.Fatalf("Failed to draw Regular Prize (A): %v", err)
+	}
+
+	// Verify User1 has all 3 prizes
+	session := service.getSession(testTenantID)
+	wins := session.Winners["001"]
+	if len(wins) != 3 {
+		t.Errorf("Expected User1 to have 3 prizes, but got %d", len(wins))
+	}
+}

@@ -16,10 +16,23 @@
                 ├── go.mod
                 └── go.sum
 - **任務 1.3:** HTMX CDN 網址 https://cdn.jsdelivr.net/npm/htmx.org/dist/
-- **任務 1.4:** 為每個使用者/公司提供獨立的資料空間管理一個「租戶地圖 (map)」，其鍵 (key) 由您指定的使用者名稱和 Client IP 組成，值 (value) 則是對應的LotterySession。
-               LotterySession 結構，用來存放的資料，包括：獎項、參與者、中獎結果，以及一個 LastActivity 時間戳，用來追蹤該租戶的最後活動時間。
+- **任務 1.3:** HTMX CDN 網址 https://cdn.jsdelivr.net/npm/htmx.org/dist/
+- **任務 1.4:** Session 管理機制升級：
+    - 放棄原有的 `名稱 + IP` 綁定機制。
+    - 改為 `名稱 + 臨時密碼` 機制。
+    - 需修改 Middleware 邏輯，驗證 Cookie 中儲存的 Token 或 ID。
 
 ## 2. 核心功能開發
+
+- **任務 2.0: 身分識別系統 (Identity System)**
+    - 修改首頁 (`index.html`) 表單，新增「臨時密碼」欄位 (`type="password"`, `minlength="6"`, `maxlength="18"`).
+    - 更新 `POST /set-tenant` Handler：
+        - 驗證密碼長度 (6-18 字元)。
+        - 根據 `Name` + `Password` 生成固定且唯一的 `TenantID` (建議使用 Hash)。
+        - 將生成的 `TenantID` 寫入 Cookie (需注意安全性，這裡僅做簡單識別)。
+    - 更新 `TenantMiddleware`：
+        - 從 Cookie 讀取 `TenantID`。
+        - 不再依賴 `ClientIP` 進行識別。
 
 - **任務 2.1: 獎項設定介面**
     - 開發一個表單讓使用者可以手動輸入獎項名稱和數量。
@@ -38,7 +51,9 @@
 ## 3. 抽獎流程開發
 
 - **任務 3.1: 抽獎主要邏輯**
-    - 實作核心抽獎演算法，確保每位參與者只能中獎一次（額外獎項除外）。
+    - 實作核心抽獎演算法：
+        - **常規獎項:** 排除已中過「常規獎項」的人 (忽略額外獎項的中獎紀錄)。
+        - **額外獎項 (DrawFromAll):** 根據選項決定排除範圍，但若由全體抽取，僅排除已中過「該特定額外獎項」的人。
     - 建立一個狀態來管理剩餘的獎項和未中獎的參與者。
 
 - **任務 3.2: 抽獎介面**

@@ -2,19 +2,22 @@ package handlers
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/csv"
-	"fmt"
+	"encoding/hex"
 	"html/template"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	"lottery/internal/services"
+
+	"github.com/gin-gonic/gin"
 )
 
-const tenantCookieName = "lottery_tenant_name"
+const tenantCookieName = "LotteryToHappy"
+const tenantIDCookieName = "LotteryTenantID"
 const tenantIDKey = "tenantID"
 
 // HTTPHandler holds the dependencies for the HTTP handlers, like the lottery service.
@@ -34,26 +37,21 @@ func NewHTTPHandler(service *services.LotteryService, templates *template.Templa
 // TenantMiddleware identifies the tenant for each request.
 func (h *HTTPHandler) TenantMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tenantName, err := c.Cookie(tenantCookieName)
+		// New Logic: Identify using the Tenant ID stored in the cookie
+		tenantID, err := c.Cookie(tenantIDCookieName)
 
 		// If cookie is not set and user is trying to access a protected page
-		if err != nil && c.Request.URL.Path != "/" {
+		if err != nil && c.Request.URL.Path != "/" && c.Request.URL.Path != "/set-tenant" { // Allow set-tenant to pass
 			c.Redirect(http.StatusFound, "/?error=login_required")
 			c.Abort() // Stop processing the request
 			return
 		}
 
-		// If cookie is not set on home page, use a temporary ID
-		if err != nil && c.Request.URL.Path == "/" {
-			tenantName = fmt.Sprintf("user-%s", c.ClientIP())
+		if tenantID != "" {
+			c.Set(tenantIDKey, tenantID)
+			// This call also updates the LastActivity timestamp for the session
+			_ = h.service.GetPrizes(tenantID) // A simple way to ensure session exists and is active
 		}
-
-		// Combine name and IP for a unique tenant ID
-		tenantID := fmt.Sprintf("%s-%s", tenantName, c.ClientIP())
-		c.Set(tenantIDKey, tenantID)
-
-		// This call also updates the LastActivity timestamp for the session
-		_ = h.service.GetPrizes(tenantID) // A simple way to ensure session exists and is active
 
 		c.Next()
 	}
@@ -106,26 +104,42 @@ func (h *HTTPHandler) RegisterTenantRoutes(router *gin.RouterGroup) {
 // SetTenant handles setting the tenant name cookie.
 func (h *HTTPHandler) SetTenant(c *gin.Context) {
 	tenantName := c.PostForm("tenantName")
-	if tenantName != "" {
-		// Set cookie for a year
-		c.SetCookie(tenantCookieName, tenantName, 3600*24*365, "/", "", false, true)
+	password := c.PostForm("tenantPassword")
+
+	if tenantName == "" {
+		c.Redirect(http.StatusFound, "/?error=name_required")
+		return
 	}
+
+	if len(password) < 6 || len(password) > 18 {
+		c.Redirect(http.StatusFound, "/?error=invalid_password_length")
+		return
+	}
+
+	// Generate Tenant ID using SHA256(Name + Password)
+	hash := sha256.Sum256([]byte(tenantName + password))
+	tenantID := hex.EncodeToString(hash[:])
+
+	// Set cookies for a year
+	// 1. Display Name
+	c.SetCookie(tenantCookieName, tenantName, 3600*24*365, "/", "", false, true)
+	// 2. Auth ID (Recoverable Session)
+	c.SetCookie(tenantIDCookieName, tenantID, 3600*24*365, "/", "", false, true)
+
 	c.Redirect(http.StatusFound, "/")
 }
 
 // ClearTenant clears the user's session and cookie, then redirects to home.
 func (h *HTTPHandler) ClearTenant(c *gin.Context) {
-	// This handler is on a public route, so it needs to construct the tenantID itself
-	// before clearing the cookie.
-	tenantName, err := c.Cookie(tenantCookieName)
-	if err == nil && tenantName != "" {
-		// If the cookie exists, construct the tenantID and clear the session data.
-		tenantID := fmt.Sprintf("%s-%s", tenantName, c.ClientIP())
+	// Logic to clear session on backend if needed
+	tenantID, err := c.Cookie(tenantIDCookieName)
+	if err == nil && tenantID != "" {
 		h.service.ClearSession(tenantID)
 	}
 
-	// Clear the cookie by setting its max age to -1
+	// Clear the cookies by setting max age to -1
 	c.SetCookie(tenantCookieName, "", -1, "/", "", false, true)
+	c.SetCookie(tenantIDCookieName, "", -1, "/", "", false, true)
 
 	c.Redirect(http.StatusFound, "/")
 }

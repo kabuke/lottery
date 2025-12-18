@@ -5,8 +5,12 @@
     <h3>設定您的名稱/公司</h3>
     <form action="/set-tenant" method="post">
         <label for="tenant-name">請輸入名稱：</label>
-        <input type="text" id="tenant-name" name="tenantName" required>
-        <button type="submit">設定</button>
+        <input type="text" id="tenant-name" name="tenantName" required placeholder="使用者或公司名稱">
+        <br>
+        <label for="tenant-password">臨時密碼 (6-18位)：</label>
+        <input type="password" id="tenant-password" name="tenantPassword" required minlength="6" maxlength="18" placeholder="用於之後還原資料">
+        <br>
+        <button type="submit">設定 / 登入</button>
     </form>
     <p><small>您的所有資料（獎項、參與者）將會與此名稱和您的 IP 位址綁定，並在一小時無活動後自動清除。</small></p>
 </div>
